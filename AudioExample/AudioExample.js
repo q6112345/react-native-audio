@@ -9,6 +9,10 @@ import {
 } from 'react-native';
 
 import {AudioRecorder, AudioUtils} from 'react-native-audio';
+var PhonePicker = require('react-native-phone-picker');
+var RNFS = require('react-native-fs');
+var Sound = require('react-native-sound');
+
 
 class AudioExample extends Component {
 
@@ -19,7 +23,8 @@ class AudioExample extends Component {
       stoppedRecording: false,
       stoppedPlaying: false,
       playing: false,
-      finished: false
+      finished: false,
+      base64:''
     };
 
     prepareRecordingPath(audioPath){
@@ -37,10 +42,11 @@ class AudioExample extends Component {
       this.prepareRecordingPath(audioPath);
       AudioRecorder.onProgress = (data) => {
         this.setState({currentTime: Math.floor(data.currentTime)});
+        console.log(`onProgress`,data);
       };
       AudioRecorder.onFinished = (data) => {
-        this.setState({finished: data.finished});
-        console.log(`Finished recording: ${data.finished}`);
+        this.setState({finished: data.finished, base64: data.base64});
+        console.log(`Finished recording`,data);
       };
     }
 
@@ -95,6 +101,44 @@ class AudioExample extends Component {
       this.setState({playing: true});
     }
 
+   _checkAudioDuration() {
+      var path = RNFS.DocumentDirectoryPath + '/testConverted.aac';
+      RNFS.writeFile(path,this.state.base64,'base64')
+        .then((success) => {
+          console.log('FILE WRITTEN!');
+          var origin = new Sound('test.aac', RNFS.DocumentDirectoryPath, (error) => {
+            if (error) {
+              console.log('failed to load the sound', error);
+            } else { // loaded successfully
+              console.log('duration of origin: ' + origin.getDuration() +
+                  'number of channels: ' + origin.getNumberOfChannels());
+            }
+          });
+          var converted = new Sound('testConverted.aac', RNFS.DocumentDirectoryPath, (error) => {
+            if (error) {
+              console.log('failed to load the sound', error);
+            } else { // loaded successfully
+              console.log('duration of converted: ' + converted.getDuration() +
+                  'number of channels: ' + converted.getNumberOfChannels());
+            }
+          });
+
+        })
+        .catch((err) => {
+          console.log(err.message);
+        });
+
+
+      // PhonePicker.select(function(phone) {
+      //     if (phone) {
+      //         phone = phone.replace(/[^\d]/g, '');
+      //         if (/^1[3|4|5|6|7|8|9][0-9]\d{8}$/.test(phone)) {
+      //             console.log(phone);
+      //         }
+      //     }
+      // })
+    }
+
     render() {
 
       return (
@@ -103,7 +147,7 @@ class AudioExample extends Component {
             {this._renderButton("RECORD", () => {this._record()}, this.state.recording )}
             {this._renderButton("STOP", () => {this._stop()} )}
             {this._renderButton("PAUSE", () => {this._pause()} )}
-            {this._renderButton("PLAY", () => {this._play()}, this.state.playing )}
+            {this._renderButton("Check Audio Duration", () => {this._checkAudioDuration()})}
             <Text style={styles.progressText}>{this.state.currentTime}s</Text>
           </View>
         </View>
